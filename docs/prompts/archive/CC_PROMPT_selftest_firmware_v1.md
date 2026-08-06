@@ -1,4 +1,5 @@
 # CC_PROMPT_selftest_firmware_v1.md
+> ✅ COMPLETE — 2026-08-06 — self-test firmware (diagnostic, not a fix)
 > Repo: Satu-EV-Demo-Firmware (existing)
 > Session type: Build (new sketch, same repo)
 

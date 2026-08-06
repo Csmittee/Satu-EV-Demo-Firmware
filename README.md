@@ -54,13 +54,30 @@ libraries folder — their pinned versions (Arduino_GFX 1.6.0, QRCode
 
 ## Getting the firmware
 
-1. Push (or merge) triggers `.github/workflows/compile-check.yml`.
-2. Once the run is green, open it in the Actions tab and download the
-   `satu-ev-demo-firmware-<run number>` artifact.
-3. Unzip it — you'll get three files:
+1. Push (or merge) triggers `.github/workflows/compile-check.yml`, which
+   compiles **two** sketches in parallel jobs: the real demo and the
+   `selftest/` diagnostic sketch (see below).
+2. Once a run is green, open it in the Actions tab and download the
+   artifact you need:
+   - `satu-ev-demo-firmware-<run number>` — the real demo
+   - `satu-ev-selftest-firmware-<run number>` — the diagnostic sketch
+3. Unzip it — each artifact has the same three files (named for
+   whichever sketch it came from), e.g. for the demo:
    - `Satu_EV_Demo.ino.bootloader.bin`
    - `Satu_EV_Demo.ino.partitions.bin`
    - `Satu_EV_Demo.ino.bin`
+
+## Self-test sketch (`selftest/`)
+
+A standalone diagnostic sketch, separate from the real demo, for
+isolating hardware/coordinate questions (touch accuracy across the
+panel, `flush()` timing, an isolated reproduction of a specific button's
+geometry) from application-logic bugs — flash it the same way as the
+demo (above), using the `satu-ev-selftest-firmware-<run number>`
+artifact. It produces diagnostic data on-screen and over serial, not a
+fix — see `PROJECT_STATE.md` for what to report back after running it.
+It does not touch the real demo's files and can be flashed and removed
+freely without affecting `Satu_EV_Demo`.
 
 ## Flashing
 

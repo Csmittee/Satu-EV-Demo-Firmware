@@ -1,5 +1,42 @@
 # PROJECT_STATE.md
-> Version 1.1 — 2026-08-06
+> Version 1.2 — 2026-08-06
+
+---
+
+## [2026-08-06] — Self-test firmware (diagnostic, not a fix)
+
+**This session produces diagnostic data, not a verified fix. Results
+depend entirely on what the owner observes when running each test on
+hardware.**
+
+Built `selftest/Satu_EV_SelfTest.ino` — a standalone diagnostic sketch,
+separate from the real demo, to isolate whether the reported "Confirm
+button unresponsive, Menu button works" bug is a hardware/coordinate
+problem or an application-logic problem, before debugging the demo's
+state machine further. 6 tests: display sanity, touch coordinate
+calibration (5 targets, raw x/y read directly off `readTouch()`),
+isolated hit-test at the exact broken Confirm-button geometry, flush()
+timing (min/max/avg over 20 runs), double-tap bypass gesture in
+isolation, QR render in isolation. Does not modify `Satu_EV_Demo.ino` or
+its headers — a genuinely separate sketch, own copies of `display.h`,
+`config.h`, and the vendored `qrcode_lib.*` (does not auto-sync, see
+each file's header comment).
+
+CI extended to compile both sketches (`compile-demo` and
+`compile-selftest` jobs), each uploading its own artifact.
+
+**Not resolved by this session, by design:** the Confirm-button bug
+itself. This session's only job is producing evidence — Test 2 and
+Test 3 are built specifically to reveal whether it's a touch
+coordinate-range problem (bottom ~15% of panel, where the Confirm/Cancel
+buttons live) or something else. The actual fix, and any resulting RULES.md
+update, come in the next session once the owner reports back what Test
+2/3 showed.
+
+Also reorganized `docs/prompts/` into `inbox/` (new, unprocessed prompts)
+and `archive/` (completed, stamped) — the previous flat structure let a
+fresh prompt land in the same folder as an already-completed one with
+nothing distinguishing them. See RULES.md R-8, `docs/prompts/README.md`.
 
 ---
 

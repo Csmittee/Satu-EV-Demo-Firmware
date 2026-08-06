@@ -1,6 +1,6 @@
 # RULES.md
-> Version 1.0 — 2026-08-06
-> Bootstrap session — rules R-1 through R-7 created fresh, no prior history
+> Version 1.1 — 2026-08-06
+> R-8 added — prompt inbox/archive workflow
 
 ---
 
@@ -51,3 +51,11 @@
   Section 4.4a of the bootstrap prompt for the full reasoning, including
   why it's single-tap-based rather than a real two-finger gesture (the
   Arduino touch path for this chip is single-touch only).
+
+- **R-8**: New CC prompts go in `docs/prompts/inbox/` — never the repo
+  root, never directly into `docs/prompts/archive/`. Once a prompt's
+  session is done, CC moves it to `docs/prompts/archive/`, stamped
+  `✅ COMPLETE — [date] — [summary]` at the top of the file. Never leave
+  a completed prompt sitting in `inbox/`, and never let an unprocessed
+  prompt sit in `archive/` — the two folders exist specifically so a
+  glance tells you which is which. See `docs/prompts/README.md`.

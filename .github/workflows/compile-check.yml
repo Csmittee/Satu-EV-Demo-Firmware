@@ -7,6 +7,7 @@ on:
       - '*.ino'
       - '*.h'
       - '*.c'
+      - 'selftest/**'
       - '.github/workflows/**'
   pull_request:
     branches: [main]
@@ -14,11 +15,12 @@ on:
       - '*.ino'
       - '*.h'
       - '*.c'
+      - 'selftest/**'
       - '.github/workflows/**'
 
 jobs:
-  compile:
-    name: Compile ESP32-S3 Firmware
+  compile-demo:
+    name: Compile ESP32-S3 Firmware (Demo)
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -80,6 +82,70 @@ jobs:
             ./build/Satu_EV_Demo.ino.bootloader.bin
             ./build/Satu_EV_Demo.ino.partitions.bin
             ./build/Satu_EV_Demo.ino.bin
+          retention-days: 7
+
+      - name: Compile result
+        if: always()
+        run: echo "Compile finished — check step above for errors"
+
+  compile-selftest:
+    name: Compile ESP32-S3 Firmware (Self-Test)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install arduino-cli
+        uses: arduino/setup-arduino-cli@v2
+
+      - name: Configure arduino-cli
+        run: |
+          arduino-cli config init
+          arduino-cli config set board_manager.additional_urls \
+            https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
+
+      - name: Install ESP32 core 2.0.17 (starting point — see LIBRARY_axs15231b.md)
+        run: |
+          arduino-cli core update-index
+          arduino-cli core install esp32:esp32@2.0.17
+
+      - name: Install libraries (locked versions — see LIBRARY_*.md)
+        run: |
+          arduino-cli lib update-index
+          arduino-cli lib install "GFX Library for Arduino"@1.6.0
+          # QRCode vendored, not Library-Manager-installed — same reason
+          # as the demo job above. See LIBRARY_qrcode.md.
+
+      - name: Compile firmware
+        run: |
+          # selftest/ already has the correctly-named .ino at its root
+          # (Satu_EV_SelfTest.ino inside a Satu_EV_SelfTest-named stage),
+          # so stage it the same way as the demo job for consistency.
+          mkdir Satu_EV_SelfTest
+          cp selftest/Satu_EV_SelfTest.ino selftest/config.h selftest/display.h \
+             selftest/tests.h selftest/qrcode_lib.h selftest/qrcode_lib.c \
+             Satu_EV_SelfTest/
+          arduino-cli compile \
+            --fqbn esp32:esp32:esp32s3:CDCOnBoot=cdc,FlashSize=16M,PartitionScheme=app3M_fat9M_16MB,PSRAM=opi,UploadSpeed=460800 \
+            --warnings default \
+            --output-dir ./build \
+            Satu_EV_SelfTest/
+
+      - name: List build output (confirms exact paths — not guessing)
+        if: success()
+        run: ls -la ./build/
+
+      - name: Upload firmware artifact (3 files required for full flash)
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: satu-ev-selftest-firmware-${{ github.run_number }}
+          path: |
+            ./build/Satu_EV_SelfTest.ino.bootloader.bin
+            ./build/Satu_EV_SelfTest.ino.partitions.bin
+            ./build/Satu_EV_SelfTest.ino.bin
           retention-days: 7
 
       - name: Compile result
