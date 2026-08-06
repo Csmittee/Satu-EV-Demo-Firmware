@@ -1,4 +1,5 @@
 # CC_PROMPT_ev_demo_bootstrap.md
+> ✅ COMPLETE — 2026-08-06 — EV demo bootstrap build
 > Codename: General Online Payment Firmware 3.5
 > Repo: NEW — first session in this repo, no CLAUDE.md/RULES.md exist yet
 > Session type: Build (bootstrap + full demo)
