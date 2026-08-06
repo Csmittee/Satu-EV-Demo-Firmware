@@ -1,0 +1,87 @@
+name: Firmware Compile Check
+
+on:
+  push:
+    branches: ['**']
+    paths:
+      - '*.ino'
+      - '*.h'
+      - '*.c'
+      - '.github/workflows/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - '*.ino'
+      - '*.h'
+      - '*.c'
+      - '.github/workflows/**'
+
+jobs:
+  compile:
+    name: Compile ESP32-S3 Firmware
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install arduino-cli
+        uses: arduino/setup-arduino-cli@v2
+
+      - name: Configure arduino-cli
+        run: |
+          arduino-cli config init
+          arduino-cli config set board_manager.additional_urls \
+            https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
+
+      - name: Install ESP32 core 2.0.17 (starting point — see LIBRARY_axs15231b.md)
+        run: |
+          arduino-cli core update-index
+          arduino-cli core install esp32:esp32@2.0.17
+
+      - name: Install libraries (locked versions — see LIBRARY_*.md)
+        run: |
+          arduino-cli lib update-index
+          arduino-cli lib install "GFX Library for Arduino"@1.6.0
+          # QRCode (ricmoo) is NOT installed via Library Manager — its
+          # qrcode.h collides with the ESP32 core's own bundled qrcode.h
+          # (used internally for RMakerQR provisioning) and silently loses
+          # that name resolution. It's vendored instead as qrcode_lib.c/.h
+          # — see LIBRARY_qrcode.md.
+
+      - name: Compile firmware
+        run: |
+          # arduino-cli requires the sketch folder name to match the .ino
+          # file name — repo root is named after the repo, not the sketch,
+          # so stage the sketch files into a correctly-named folder first.
+          mkdir Satu_EV_Demo
+          cp Satu_EV_Demo.ino config.h display.h qr.h ui_screens.h state_machine.h \
+             qrcode_lib.h qrcode_lib.c Satu_EV_Demo/
+          # FQBN per CC_PROMPT_ev_demo_bootstrap.md Section 5 — CDCOnBoot=cdc
+          # because this board's Type-C is native ESP32-S3 USB, not a UART
+          # bridge chip. Flag: worth confirming on first successful upload.
+          arduino-cli compile \
+            --fqbn esp32:esp32:esp32s3:CDCOnBoot=cdc,FlashSize=16M,PartitionScheme=app3M_fat9M_16MB,PSRAM=opi,UploadSpeed=460800 \
+            --warnings default \
+            --output-dir ./build \
+            Satu_EV_Demo/
+
+      - name: List build output (confirms exact paths — not guessing)
+        if: success()
+        run: ls -la ./build/
+
+      - name: Upload firmware artifact (3 files required for full flash)
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: satu-ev-demo-firmware-${{ github.run_number }}
+          path: |
+            ./build/Satu_EV_Demo.ino.bootloader.bin
+            ./build/Satu_EV_Demo.ino.partitions.bin
+            ./build/Satu_EV_Demo.ino.bin
+          retention-days: 7
+
+      - name: Compile result
+        if: always()
+        run: echo "Compile finished — check step above for errors"
