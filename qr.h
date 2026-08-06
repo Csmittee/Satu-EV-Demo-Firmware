@@ -7,7 +7,11 @@
 // PromptPay string and NOT a real merchant ID. This must never be
 // presented as a scannable real payment QR.
 
-#include <qrcode.h>
+// Vendored, not Library-Manager-installed — see qrcode_lib.h and
+// LIBRARY_qrcode.md for why <qrcode.h> can't be used here (it collides
+// with the ESP32 Arduino core's own bundled qrcode.h and silently
+// resolves to the wrong one).
+#include "qrcode_lib.h"
 #include "config.h"
 #include "display.h"
 

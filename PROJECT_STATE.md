@@ -1,5 +1,16 @@
 # PROJECT_STATE.md
-> Version 1.0 — 2026-08-06
+> Version 1.1 — 2026-08-06
+
+---
+
+## [2026-08-06] — CI fix: QRCode vendored (same-day follow-up)
+
+First CI run on PR #1 failed: `qrcode.h` name collision with the ESP32
+Arduino core's own bundled qrcode component (see `LIBRARY_qrcode.md`).
+Fixed by vendoring ricmoo/QRCode as `qrcode_lib.c`/`qrcode_lib.h`
+instead of installing via Arduino Library Manager. Library version
+pinned to Arduino_GFX 1.6.0 is unaffected — that step of CI passed
+cleanly on the first run.
 
 ---
 

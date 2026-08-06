@@ -1,6 +1,25 @@
 # CC_CHAT_LOG.md
-> Version 1.0 — 2026-08-06
+> Version 1.1 — 2026-08-06
 
+---
+## [2026-08-06] — CI fix: qrcode.h collision (PR #1 follow-up)
+**Did:** First CI run failed — `#include <qrcode.h>` was silently
+resolving to the ESP32 Arduino core's own bundled qrcode component
+header (used for RMakerQR provisioning) instead of ricmoo/QRCode,
+because arduino-cli never added the Library-Manager-installed QRCode
+library to the build (confirmed via "Used library" table omitting it).
+Fixed by vendoring ricmoo/QRCode v0.0.1 into the repo as
+`qrcode_lib.c`/`qrcode_lib.h` (quote-included, so it can't lose to the
+core's angle-bracket header again) and dropping the `arduino-cli lib
+install "QRCode"` CI step.
+**Updated:** `qr.h` (include path), `.github/workflows/compile-check.yml`
+(cp list + install step), `LIBRARY_qrcode.md` (KT writeup + version
+note), `RULES.md` R-6 (vendoring note), `KNOWLEDGE_MAP.md`.
+**New files:** `qrcode_lib.h`, `qrcode_lib.c`.
+**Pending Chat verify:** none beyond original entry — this is a same-day
+compile fix, not a new scope decision.
+**Flags:** KT invoked (SKILL 6) — IS: `<qrcode.h>` resolves to a
+different, ESP-IDF-provided header; IS NOT: a library install failure.
 ---
 ## [2026-08-06] — CC_PROMPT_ev_demo_bootstrap
 **Did:** Bootstrap build. Created `Satu_EV_Demo.ino`, `config.h`,

@@ -36,7 +36,11 @@
   install these libraries in a local Arduino library folder. This repo's
   library versions (Arduino_GFX 1.6.0, QRCode 0.0.1) would collide with
   Satu-Vending-Firmware's locked versions (Arduino_GFX 1.4.9) if both
-  were installed into the same local Arduino libraries directory.
+  were installed into the same local Arduino libraries directory. Note:
+  QRCode itself is vendored (`qrcode_lib.c`/`.h`), not Library-Manager-
+  installed at all — its header name collides with the ESP32 core's own
+  bundled `qrcode.h`. See `LIBRARY_qrcode.md`. Do not "fix" this by
+  reinstalling it via Library Manager.
 
 - **R-7**: The QR and Processing screens advance via a **double-tap demo
   bypass gesture** (two sequential single-finger taps within 400ms), not

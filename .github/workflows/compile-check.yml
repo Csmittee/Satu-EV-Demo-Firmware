@@ -6,12 +6,14 @@ on:
     paths:
       - '*.ino'
       - '*.h'
+      - '*.c'
       - '.github/workflows/**'
   pull_request:
     branches: [main]
     paths:
       - '*.ino'
       - '*.h'
+      - '*.c'
       - '.github/workflows/**'
 
 jobs:
@@ -42,7 +44,11 @@ jobs:
         run: |
           arduino-cli lib update-index
           arduino-cli lib install "GFX Library for Arduino"@1.6.0
-          arduino-cli lib install "QRCode"
+          # QRCode (ricmoo) is NOT installed via Library Manager — its
+          # qrcode.h collides with the ESP32 core's own bundled qrcode.h
+          # (used internally for RMakerQR provisioning) and silently loses
+          # that name resolution. It's vendored instead as qrcode_lib.c/.h
+          # — see LIBRARY_qrcode.md.
 
       - name: Compile firmware
         run: |
@@ -50,7 +56,8 @@ jobs:
           # file name — repo root is named after the repo, not the sketch,
           # so stage the sketch files into a correctly-named folder first.
           mkdir Satu_EV_Demo
-          cp Satu_EV_Demo.ino config.h display.h qr.h ui_screens.h state_machine.h Satu_EV_Demo/
+          cp Satu_EV_Demo.ino config.h display.h qr.h ui_screens.h state_machine.h \
+             qrcode_lib.h qrcode_lib.c Satu_EV_Demo/
           # FQBN per CC_PROMPT_ev_demo_bootstrap.md Section 5 — CDCOnBoot=cdc
           # because this board's Type-C is native ESP32-S3 USB, not a UART
           # bridge chip. Flag: worth confirming on first successful upload.

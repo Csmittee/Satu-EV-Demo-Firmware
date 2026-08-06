@@ -1,7 +1,50 @@
 # LIBRARY_qrcode.md
-> Version 1.0 — 2026-08-06
-> Library: QRCode (ricmoo/QRCode, "QRCode" in Arduino Library Manager)
-> Covers: QR generation API actually exported, as installed
+> Version 1.1 — 2026-08-06
+> Library: QRCode (ricmoo/QRCode) — VENDORED as `qrcode_lib.c`/`qrcode_lib.h`,
+> not installed via Arduino Library Manager. See "Why vendored" below.
+> Covers: QR generation API actually exported, as vendored
+
+---
+
+## Why this is vendored, not Library-Manager-installed (KT — R-6 SKILL 6)
+
+First CI run (`compile-check.yml`) failed with `qrcode_getBufferSize`,
+`QRCode`, `qrcode_initText`, `ECC_LOW`, `qrcode_getModule` all "not
+declared in this scope" inside `qr.h`, despite `arduino-cli lib install
+"QRCode"` reporting success and `#include <qrcode.h>` being present. The
+compiler's suggested alternatives (`esp_qrcode_get_module`,
+`qrcode_display`) were the giveaway.
+
+**IS:** `#include <qrcode.h>` resolves to a *different* header than
+ricmoo's — one exposing `esp_qrcode_*`-prefixed functions instead.
+**IS NOT:** the library failed to install; `arduino-cli` logged
+`Installed QRCode@0.0.1` successfully, and the "Used library" table at
+the end of the failed build listed `GFX Library for Arduino`, `SPI`,
+`Wire` — but never `QRCode`.
+
+**Hypothesis, confirmed:** the ESP32 Arduino core (2.0.17) bundles
+Espressif's own `qrcode` component internally (used for
+`RMakerQR.h`/provisioning), which also ships a header literally named
+`qrcode.h`. That core-bundled header wins the name resolution before
+arduino-cli's library-dependency scan ever gets to consider the
+Library-Manager-installed `QRCode` library — which is exactly why
+`QRCode` never appears in the "Used library" table: it was never
+selected as a dependency at all. This is a real, documented collision
+(see e.g. espressif/esp32-arduino-lib-builder#138), not a mistake in
+this repo's install step.
+
+**Fix:** vendor ricmoo/QRCode's `src/qrcode.c`/`src/qrcode.h` (MIT
+licensed, unmodified except the renamed include) directly into the repo
+as `qrcode_lib.c`/`qrcode_lib.h`, and `#include "qrcode_lib.h"` with
+quotes. A quote-include always checks the including file's own directory
+first, so it can never lose to the core's angle-bracket-resolved
+`qrcode.h` again — regardless of arduino-cli's dependency-scan behavior.
+The CI workflow no longer runs `arduino-cli lib install "QRCode"`, and
+copies `qrcode_lib.c`/`.h` into the staged sketch folder alongside the
+other sketch files.
+
+**Do not revert this** by switching back to `<qrcode.h>` + Library
+Manager — that's the exact configuration that broke CI.
 
 ---
 
@@ -11,14 +54,16 @@
 - `src/qrcode.h` (public API header) — read in full for exact signatures
 - `library.properties` — installed/pinned version number
 
-## Version pinned
+## Version vendored
 
 `library.properties` reports **version 0.0.1** — this library has never
-moved past 0.0.1 in its versioning scheme despite being actively used;
-that is the correct version string to pin in the CI workflow (`QRCode`
-latest, which resolves to 0.0.1). Not a placeholder or a typo.
+moved past 0.0.1 in its versioning scheme despite being actively used.
+Not a placeholder or a typo. `qrcode_lib.c`/`qrcode_lib.h` are vendored
+from this exact version (see "Why this is vendored" above) — bump by
+re-fetching `src/qrcode.c`/`src/qrcode.h` from upstream and re-applying
+the same rename if a future session needs a newer version.
 
-## Exact API surface (as exported by `qrcode.h`)
+## Exact API surface (as exported by `qrcode_lib.h`)
 
 ```c
 typedef struct QRCode {
