@@ -1,4 +1,5 @@
 # CC_PROMPT_fix_touch_garbage_read_v1.md
+> ✅ COMPLETE — 2026-08-08 — touch reset timing fix (garbage 4095,4095 reads)
 > Repo: Satu-EV-Demo-Firmware (existing)
 > Session type: Fix — grounded in real captured hardware data, not speculation
 

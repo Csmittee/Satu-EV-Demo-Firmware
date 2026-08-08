@@ -1,5 +1,35 @@
 # PROJECT_STATE.md
-> Version 1.2 — 2026-08-06
+> Version 1.3 — 2026-08-08
+
+---
+
+## [2026-08-08] — Fix: touch reset timing (garbage 4095,4095 reads)
+
+**Root cause found and fixed — grounded in owner-captured hardware
+evidence, cross-checked against Espressif's official reference driver.**
+See `LIBRARY_axs15231b.md` ("Touch reset timing") and RULES.md R-9 for
+the full evidence chain.
+
+Owner's Test 2 (touch calibration) Serial capture showed all four
+corner taps returning identical `(4095, 4095)` — the max a 12-bit field
+holds, consistent with all-`0xFF` bytes over I2C. `displayInit()`'s
+touch reset sequence (20ms/20ms/50ms) was too short — Espressif's own
+`esp_lcd_axs15231b` reference driver uses 200ms on both sides of the
+reset toggle. Fixed in both `display.h` and `selftest/display.h`.
+
+This plausibly explains the reported "menu inaccessible on some
+screens, feels slow" too: a garbage max-value read consumed the
+touch-edge state (`_wasTouched`), so the next genuine tap didn't
+register as a new edge until the phantom touch "lifted" — which screen
+appeared to work was down to whether a garbage read happened to land
+first, not that screen's logic being broken.
+
+**Not independently re-verified from this session** — no physical
+hardware access here. Owner must re-flash `Satu_EV_SelfTest`, re-run
+Test 2 and Test 3, and confirm no more `4095,4095` readings and that
+Test 3 responds reliably on first tap. If the real demo's "slow" feel
+persists after this fix, check Test 4's flush() timing separately —
+this fix addresses the touch-read issue, not display flush speed.
 
 ---
 

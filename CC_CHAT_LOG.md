@@ -1,6 +1,29 @@
 # CC_CHAT_LOG.md
-> Version 1.2 — 2026-08-06
+> Version 1.3 — 2026-08-08
 
+---
+## [2026-08-08] — CC_PROMPT_fix_touch_garbage_read_v1 (from docs/prompts/inbox/)
+**Did:** Root cause confirmed for the garbage `4095,4095` touch reads
+(owner-captured Serial evidence: all 4 corner taps in Test 2 returned
+identical max-value reads) — the touch reset sequence in `displayInit()`
+was too short (20/20/50ms) vs. Espressif's own `esp_lcd_axs15231b`
+reference driver (200ms/200ms). Fixed reset timing in both `display.h`
+and `selftest/display.h`. Did NOT add a defensive garbage-value filter
+— the prompt explicitly asked for one grounded fix, not both, and the
+reference driver needs no such filter when reset timing is correct.
+**Updated:** RULES.md (R-9), LIBRARY_axs15231b.md ("Touch reset timing"
+section + known issues), PROJECT_STATE.md.
+**New files:** none.
+**Pending Chat verify:** owner must re-flash `Satu_EV_SelfTest`, re-run
+Test 2/3, confirm no more `4095,4095` and Test 3 responds on first tap.
+If the demo still feels "slow" after this, that may be Test 4's
+flush() timing — a separate concern this fix doesn't address.
+**Flags:** No unexecuted "instrumentation prompt" was sitting in
+`docs/prompts/inbox/` (checked, empty) — the prompt's Section 1
+contingency for that didn't apply. The prompt itself was uploaded
+directly to `docs/prompts/` root again (not `inbox/`, commit `b0930ea`)
+— moved to `inbox/` before processing, per R-8. No RULES.md rule was
+removed or changed, only added (R-9).
 ---
 ## [2026-08-06] — CC_PROMPT_selftest_firmware_v1 (from docs/prompts/inbox/)
 **Did:** Built `selftest/` — a standalone diagnostic sketch (6 tests:

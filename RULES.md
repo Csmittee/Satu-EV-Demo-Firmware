@@ -1,6 +1,6 @@
 # RULES.md
-> Version 1.1 — 2026-08-06
-> R-8 added — prompt inbox/archive workflow
+> Version 1.2 — 2026-08-08
+> R-9 added — touch reset timing (garbage 4095,4095 read fix)
 
 ---
 
@@ -59,3 +59,17 @@
   a completed prompt sitting in `inbox/`, and never let an unprocessed
   prompt sit in `archive/` — the two folders exist specifically so a
   glance tells you which is which. See `docs/prompts/README.md`.
+
+- **R-9**: The AXS15231B touch reset sequence in `displayInit()` (both
+  `display.h` and `selftest/display.h`) must hold `TOUCH_RST` low for at
+  least 200ms and wait at least 200ms after releasing it before the
+  first touch query — a shorter sequence (originally 20ms/20ms/50ms)
+  let `readTouch()` query the chip before its post-reset boot finished,
+  returning garbage (`0xFF` bytes, read as `x=y=4095`) that got treated
+  as a real touch-down. Confirmed against Espressif's own
+  `esp_lcd_axs15231b` reference driver, which uses 200ms on both sides
+  and does no defensive garbage-value filtering — meaning correct reset
+  timing, not read validation, is the actual fix. Do not "fix" a
+  recurrence of `4095,4095` reads by adding a discard-garbage-values
+  filter instead of checking this timing first. See
+  `LIBRARY_axs15231b.md` ("Touch reset timing").
