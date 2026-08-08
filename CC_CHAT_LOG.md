@@ -1,6 +1,33 @@
 # CC_CHAT_LOG.md
-> Version 1.1 — 2026-08-06
+> Version 1.2 — 2026-08-06
 
+---
+## [2026-08-06] — CC_PROMPT_selftest_firmware_v1 (from docs/prompts/inbox/)
+**Did:** Built `selftest/` — a standalone diagnostic sketch (6 tests:
+display sanity, touch calibration, isolated Confirm-button hit-test,
+flush() timing, double-tap isolated, QR render isolated) to isolate
+whether the reported Confirm-button bug is hardware/coordinate or
+application logic, before debugging the demo further. Does not touch
+`Satu_EV_Demo.ino` or its headers. Extended CI to compile both sketches.
+Also reorganized `docs/prompts/` into `inbox/`/`archive/` per owner
+request (separate from this prompt's own scope).
+**Updated:** RULES.md (R-8, prompt workflow — not test-related, per
+owner's separate request), PROJECT_STATE.md, KNOWLEDGE_MAP.md, CLAUDE.md,
+`.github/workflows/compile-check.yml`.
+**New files:** `selftest/Satu_EV_SelfTest.ino`, `selftest/config.h`,
+`selftest/display.h`, `selftest/tests.h`, `selftest/qrcode_lib.h`,
+`selftest/qrcode_lib.c`, `docs/prompts/README.md`.
+**Pending Chat verify:** nothing yet — this session produces diagnostic
+data, not a fix. Waiting on the owner to run all 6 tests on the physical
+board and report back (see PROJECT_STATE.md for exactly what to report).
+**Flags:** OVERRIDE — prompt's Section 3 file list didn't itemize a
+vendored qrcode_lib copy for `selftest/`, but Test 6 needs one to
+compile standalone now that the repo vendors QRCode instead of
+installing it via Library Manager (see LIBRARY_qrcode.md, added last
+session after this prompt would have been written). Copied
+`qrcode_lib.h`/`.c` into `selftest/` to match. No RULES.md entry about
+the actual bug yet — root cause depends on Test 2/3 results, per the
+prompt's own instruction to wait for the next session.
 ---
 ## [2026-08-06] — CI fix: qrcode.h collision (PR #1 follow-up)
 **Did:** First CI run failed — `#include <qrcode.h>` was silently

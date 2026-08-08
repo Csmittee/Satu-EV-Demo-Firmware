@@ -1,5 +1,5 @@
 # CLAUDE.md
-> Version 1.0 — 2026-08-06
+> Version 1.1 — 2026-08-06
 
 This repo is the **Satu EV Demo Firmware** — a standalone, offline sales
 demo for the Guition JC3248W535C (ESP32-S3 + AXS15231B display/touch)
@@ -20,6 +20,11 @@ Key files: `Satu_EV_Demo.ino` (setup/loop only) → `config.h` (pins,
 colors, menu, strings) → `display.h` (QSPI/AXS15231B/Canvas + touch) →
 `state_machine.h` (6-state enum) → `ui_screens.h` (6 screens) → `qr.h`
 (placeholder QR generation). CI: `.github/workflows/compile-check.yml`.
+`selftest/` is a separate diagnostic sketch, own copies of the relevant
+files (not shared includes) — see KNOWLEDGE_MAP.md.
+
+New CC prompts go in `docs/prompts/inbox/`; completed ones move to
+`docs/prompts/archive/` stamped complete. See RULES.md R-8.
 
 This firmware simulates payment only. It must never be modified to make
 a real payment call without a separate, explicit owner-approved session.
