@@ -1,5 +1,5 @@
 # LIBRARY_axs15231b.md
-> Version 1.0 — 2026-08-06
+> Version 1.1 — 2026-08-08
 > Library: GFX Library for Arduino (moononournation/Arduino_GFX)
 > Covers: display bus, AXS15231B driver, Arduino_Canvas framebuffer, touch read
 
@@ -19,6 +19,10 @@
   used to cross-check the I2C touch protocol at the byte level
 - Community driver repo `me-processware/JC3248W535-Driver` — cross-check
   for touch I2C address/pins
+- `NorthernMan54/JC3248W535EN/src/esp_lcd_axs15231b.c` (Espressif's
+  official `esp_lcd_axs15231b` component, vendored into a community
+  repo) — read again for the exact `touch_axs15231b_reset()` timing,
+  2026-08-08, to fix the garbage `4095,4095` touch reads
 
 ## Version pinned: v1.6.0 — NOT the latest (v1.6.7)
 
@@ -117,8 +121,49 @@ wrapper found) exposes single-point data only. This is why the double-tap
 gesture (R-7) is implemented as two sequential single-point taps, not a
 simultaneous two-finger gesture — see `ui_screens.h`.
 
+### Touch reset timing — fixed 2026-08-08 (was the root cause of garbage `4095,4095` reads)
+
+**Evidence (owner, physical board, Serial capture via selftest Test 2):**
+all four corner taps — four different physical locations — returned the
+identical raw value `(4095, 4095)` (`0x0FFF`, the max a 12-bit field
+holds). A center tap and a retap of the same corner both returned
+different, plausible small values. `Wire.requestFrom()` still returned 8
+bytes each time — the I2C transaction "succeeded," the content was
+garbage (consistent with all of `data[2..5]` being `0xFF`).
+
+**Root cause:** `displayInit()`'s touch reset sequence
+(`HIGH → delay(20) → LOW → delay(20) → HIGH → delay(50)`) was too short.
+Espressif's own `esp_lcd_axs15231b` reference driver (same silicon,
+via `esp_lcd_touch_new_i2c_axs15231b()` → `touch_axs15231b_reset()`)
+uses `delay(200)` on **both** sides of the reset toggle — 4-10x longer
+than what this repo had. Querying the touch engine before it finished
+booting after reset returned garbage that got read as valid touch data.
+The reference driver's `touch_axs15231b_read_data()` does **no**
+garbage-value filtering either (it only checks the reported point
+count) — reinforcing that correct reset timing, not defensive read
+validation, is the actual fix; a working implementation of this exact
+chip doesn't need one.
+
+**Fix:** reset delays changed to match the reference — 200ms hold-low +
+200ms settle after release, in both `display.h` and `selftest/display.h`.
+See RULES.md R-9.
+
+**Not independently re-verified from this session** (no physical
+hardware access here) — owner must re-flash and re-run Test 2/3 to
+confirm no more `4095,4095` readings and that Test 3 now responds
+reliably on first tap. If the symptom persists after this fix, the next
+hypothesis to check is the command-byte sequence itself
+(`0xB5 0xAB 0xA5 0x5A 0x00 0x00 0x00 0x08`) being a community
+reverse-engineered guess that may return valid-looking-but-wrong data
+independent of reset timing (see Section 3.2 candidate 2 in
+`docs/prompts/archive/CC_PROMPT_fix_touch_garbage_read_v1.md`).
+
 ## Known issues summary (for future sessions)
 
+- Touch reset sequence needed 200ms/200ms, not 20ms/20ms/50ms — fixed
+  2026-08-08, see "Touch reset timing" above. If garbage `4095,4095`
+  reads ever reappear, this is the first place to re-check, not the
+  second.
 - v1.6.1+: AXS15231B QSPI init regression on this board (#803) — reason
   we're pinned to v1.6.0, see above
 - Multiple older issues (#766, #713, #593, #513) on this same

@@ -43,12 +43,19 @@ static bool displayInit() {
 
   Wire.begin(TOUCH_SDA, TOUCH_SCL);
   pinMode(TOUCH_RST, OUTPUT);
+  // Reset timing matches Espressif's esp_lcd_axs15231b reference driver
+  // (200ms hold-low + 200ms settle after release) — the original 20ms/
+  // 20ms/50ms sequence was too short. Querying the touch engine before
+  // it finished booting after reset returned garbage (0xFF bytes, read
+  // as x=y=4095) that got treated as a real touch-down, consuming the
+  // touch-edge state and making the next genuine tap not register until
+  // the phantom touch "lifted." See LIBRARY_axs15231b.md and RULES.md R-9.
   digitalWrite(TOUCH_RST, HIGH);
-  delay(20);
+  delay(10);
   digitalWrite(TOUCH_RST, LOW);
-  delay(20);
+  delay(200);
   digitalWrite(TOUCH_RST, HIGH);
-  delay(50);
+  delay(200);
   pinMode(TOUCH_INT, INPUT);
 
   return true;
