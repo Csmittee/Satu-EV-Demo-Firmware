@@ -75,7 +75,7 @@ static void drawWelcomeScreen() {
   drawCenteredText(g_lang.welcomeTitle, SCREEN_W / 2, 80, 2, COLOR_TEXT_LIGHT);
   drawCenteredText(g_lang.welcomeSubtitle, SCREEN_W / 2, 120, 1, COLOR_TEXT_LIGHT);
   drawCenteredText(g_lang.welcomeTap, SCREEN_W / 2, 420, 2, COLOR_PRIMARY_DARK);
-  gfx->flush();
+  loggedFlush();
 }
 
 static void handleWelcomeTouch(const TouchPoint &tp) {
@@ -125,7 +125,7 @@ static void drawMenuScreen() {
     drawCenteredText(priceBuf, x + w / 2, y + h - 24, 2, COLOR_PRIMARY);
   }
 
-  gfx->flush();
+  loggedFlush();
 }
 
 static void handleMenuTouch(const TouchPoint &tp) {
@@ -188,7 +188,7 @@ static void drawConfirmScreen() {
   gfx->fillRoundRect(x, y, w, h, 8, COLOR_PRIMARY);
   drawCenteredText(g_lang.confirmBtnConfirm, x + w / 2, y + h / 2, 2, COLOR_TEXT_LIGHT);
 
-  gfx->flush();
+  loggedFlush();
 }
 
 static void handleConfirmTouch(const TouchPoint &tp) {
@@ -251,7 +251,7 @@ static void drawProcessingScreen() {
     gfx->fillCircle(cx, PROCESSING_DOT_Y, PROCESSING_DOT_RADIUS, color);
   }
 
-  gfx->flush();
+  loggedFlush();
 }
 
 static void handleProcessingTouch(const TouchPoint &tp) {
@@ -277,7 +277,7 @@ static void drawFinishScreen() {
     drawCenteredText(totalBuf, SCREEN_W / 2, 260, 2, COLOR_PRIMARY);
   }
 
-  gfx->flush();
+  loggedFlush();
 }
 
 static void handleFinishTouch(const TouchPoint &tp) {

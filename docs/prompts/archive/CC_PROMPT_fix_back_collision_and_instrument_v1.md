@@ -1,4 +1,5 @@
 # CC_PROMPT_fix_back_collision_and_instrument_v1.md
+> ✅ COMPLETE — 2026-08-11 — Back zone repositioned (R-10) + always-on touch/flush/loop instrumentation (R-11); Test 3/slowness still open pending owner's Serial log
 > Repo: Satu-EV-Demo-Firmware (existing)
 > Session type: Fix (certain) + lightweight always-on instrumentation
 > Owner note: multiple fix rounds already spent on touch — this session

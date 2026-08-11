@@ -1,6 +1,7 @@
 # RULES.md
-> Version 1.2 — 2026-08-08
-> R-9 added — touch reset timing (garbage 4095,4095 read fix)
+> Version 1.3 — 2026-08-11
+> R-10, R-11 added — hit-rect overlap checks must be programmatic;
+> always-on touch/flush/loop diagnostic logging
 
 ---
 
@@ -73,3 +74,34 @@
   recurrence of `4095,4095` reads by adding a discard-garbage-values
   filter instead of checking this timing first. See
   `LIBRARY_axs15231b.md` ("Touch reset timing").
+
+- **R-10**: Any new touch-interactive control (button, back-zone, test
+  target, menu row) must have its hit-rect checked against every other
+  hit-rect on the same screen for overlap **programmatically** — a
+  `static_assert` (see `rectsOverlap()` in `selftest/tests.h`) or
+  equivalent compile-time/boot-time check, not eyeballed coordinates.
+  Origin: the self-test's `<Back>` zone was placed without checking it
+  against Test 2's 5 calibration targets, and the owner reported tapping
+  TR being consumed as "exit test" — re-reading the code afterward
+  showed no actual pixel-space overlap existed, meaning the check would
+  have passed trivially if it had existed, but its total *absence* meant
+  nobody could point to that fact quickly when debugging. Always add the
+  check, even when the geometry looks obviously fine.
+
+- **R-11**: Touch I2C transactions, `flush()` calls, and `loop()`
+  iterations are always-on instrumented — not a temporary debug
+  session's logging, don't remove it after a fix lands:
+  - Every touch I2C failure logs which step failed
+    (`Wire.endTransmission()` non-zero vs `requestFrom()` byte-count
+    mismatch are different failure modes, logged differently), plus a
+    running failure counter logged every 50th failure
+  - Every real touch-down logs raw `x,y`
+  - Every `gfx->flush()` call goes through `loggedFlush()` (see
+    `display.h`), which logs its duration — the one exception is Test 4
+    (flush timing) in `selftest/tests.h`, which calls `gfx->flush()`
+    directly since it already has its own dedicated per-call logging
+  - Any `loop()` iteration over 100ms logs its duration
+  See `LIBRARY_axs15231b.md` and `docs/prompts/archive/
+  CC_PROMPT_fix_back_collision_and_instrument_v1.md` Section 3 for the
+  exact format. If new draw functions or touch paths are added, wire
+  them into this logging the same way — don't let new code bypass it.
