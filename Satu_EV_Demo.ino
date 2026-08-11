@@ -17,8 +17,17 @@ void setup() {
 }
 
 void loop() {
+  uint32_t loopStart = millis();
+
   tickScreen();
   TouchPoint tp = pollTouchEdge();
   handleTouch(tp);
+
   delay(10);
+
+  // Always-on diagnostic — see RULES.md R-11.
+  uint32_t loopDur = millis() - loopStart;
+  if (loopDur > 100) {
+    Serial.printf("[%lu] LOOP slow dur=%lums\n", (unsigned long)loopStart, (unsigned long)loopDur);
+  }
 }

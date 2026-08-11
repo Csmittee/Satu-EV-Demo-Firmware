@@ -48,13 +48,36 @@ static TouchPoint pollTouchEdge() {
 }
 
 // ---------------------------------------------------------------------
-// "< Back" zone — fixed top-left corner, identical on every test screen,
-// so there's one muscle-memory spot to return to the menu from.
+// "< Back" zone — top-center, identical on every test screen, so
+// there's one muscle-memory spot to return to the menu from.
+//
+// BUG FIX (2026-08-11): previously top-left (0,0,70,40). Owner
+// reproduced tapping the Test 2 TR target being consumed as "exit
+// test" instead of being captured as calibration data. Verified by
+// re-reading this file: the OLD Back rect (0,0)-(70,40) and the TR
+// target's circle (center 300,20 r=18, bbox 282-318 x 2-38) do not
+// actually overlap in screen-pixel space — there is a ~212px gap. That
+// means either (a) this analysis is missing something, or (b) the
+// touch controller's raw x/y (what isBackZoneTap() actually checks
+// against) isn't 1:1 with screen-pixel space the way every hit-test in
+// this codebase assumes — a coordinate-mapping question, not a pure
+// layout mistake. Not resolved here (see docs/prompts/archive/
+// CC_PROMPT_fix_back_collision_and_instrument_v1.md Section 3 — that's
+// exactly the kind of thing this session's instrumentation exists to
+// surface with real data instead of another guess). Repositioning Back
+// to top-center, maximally and provably clear of all 5 calibration
+// targets (see static_asserts below), is a safe fix regardless of
+// which explanation is correct — it removes Back as a variable either
+// way. If TR still can't be calibrated after this, the coordinate-
+// mapping hypothesis is the next thing to check, with the Serial log
+// this session adds as evidence.
 // ---------------------------------------------------------------------
-#define BACK_ZONE_X 0
-#define BACK_ZONE_Y 0
 #define BACK_ZONE_W 70
 #define BACK_ZONE_H 40
+#define BACK_ZONE_X ((SCREEN_W - BACK_ZONE_W) / 2)
+#define BACK_ZONE_Y 0
+
+#define CALIB_TARGET_RADIUS 18
 
 static void drawBackZone() {
   gfx->fillRect(BACK_ZONE_X, BACK_ZONE_Y, BACK_ZONE_W, BACK_ZONE_H, COLOR_PRIMARY);
@@ -64,6 +87,48 @@ static void drawBackZone() {
 static bool isBackZoneTap(const TouchPoint &tp) {
   return pointInRect(tp.x, tp.y, BACK_ZONE_X, BACK_ZONE_Y, BACK_ZONE_W, BACK_ZONE_H);
 }
+
+// Compile-time proof (not eyeballed) that Back's rect doesn't overlap
+// any of Test 2's 5 target hit-areas (approximated as square bounding
+// boxes around each circle — a superset of the actual circle, so this
+// is a conservative/stricter check than the true hit area). If this
+// ever fails to compile after moving either Back or a target, that's
+// the point — it means they'd overlap on the physical screen.
+static constexpr bool rectsOverlap(int ax, int ay, int aw, int ah, int bx, int by, int bw, int bh) {
+  return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
+}
+
+#define CALIB_TL_X 20
+#define CALIB_TL_Y 20
+#define CALIB_TR_X (SCREEN_W - 20)
+#define CALIB_TR_Y 20
+#define CALIB_BL_X 20
+#define CALIB_BL_Y (SCREEN_H - 20)
+#define CALIB_BR_X (SCREEN_W - 20)
+#define CALIB_BR_Y (SCREEN_H - 20)
+#define CALIB_C_X (SCREEN_W / 2)
+#define CALIB_C_Y (SCREEN_H / 2)
+
+static_assert(!rectsOverlap(BACK_ZONE_X, BACK_ZONE_Y, BACK_ZONE_W, BACK_ZONE_H,
+                             CALIB_TL_X - CALIB_TARGET_RADIUS, CALIB_TL_Y - CALIB_TARGET_RADIUS,
+                             CALIB_TARGET_RADIUS * 2, CALIB_TARGET_RADIUS * 2),
+              "Back zone overlaps TL calibration target");
+static_assert(!rectsOverlap(BACK_ZONE_X, BACK_ZONE_Y, BACK_ZONE_W, BACK_ZONE_H,
+                             CALIB_TR_X - CALIB_TARGET_RADIUS, CALIB_TR_Y - CALIB_TARGET_RADIUS,
+                             CALIB_TARGET_RADIUS * 2, CALIB_TARGET_RADIUS * 2),
+              "Back zone overlaps TR calibration target");
+static_assert(!rectsOverlap(BACK_ZONE_X, BACK_ZONE_Y, BACK_ZONE_W, BACK_ZONE_H,
+                             CALIB_BL_X - CALIB_TARGET_RADIUS, CALIB_BL_Y - CALIB_TARGET_RADIUS,
+                             CALIB_TARGET_RADIUS * 2, CALIB_TARGET_RADIUS * 2),
+              "Back zone overlaps BL calibration target");
+static_assert(!rectsOverlap(BACK_ZONE_X, BACK_ZONE_Y, BACK_ZONE_W, BACK_ZONE_H,
+                             CALIB_BR_X - CALIB_TARGET_RADIUS, CALIB_BR_Y - CALIB_TARGET_RADIUS,
+                             CALIB_TARGET_RADIUS * 2, CALIB_TARGET_RADIUS * 2),
+              "Back zone overlaps BR calibration target");
+static_assert(!rectsOverlap(BACK_ZONE_X, BACK_ZONE_Y, BACK_ZONE_W, BACK_ZONE_H,
+                             CALIB_C_X - CALIB_TARGET_RADIUS, CALIB_C_Y - CALIB_TARGET_RADIUS,
+                             CALIB_TARGET_RADIUS * 2, CALIB_TARGET_RADIUS * 2),
+              "Back zone overlaps Center calibration target");
 
 // ---------------------------------------------------------------------
 // Top-level test menu
@@ -109,7 +174,7 @@ static void drawTestMenu() {
     drawCenteredText(TEST_NAMES[i], x + w / 2, y + h / 2, 2, COLOR_TEXT_DARK);
   }
 
-  gfx->flush();
+  loggedFlush();
 }
 
 static void handleTestMenuTouch(const TouchPoint &tp) {
@@ -146,7 +211,7 @@ static void tickDisplaySanity() {
   gfx->fillRect(SCREEN_W - 140, 0, 140, 30, COLOR_CARD);
   drawCenteredText(CYCLE_NAMES[idx], SCREEN_W - 70, 15, 2, COLOR_TEXT_DARK);
   drawBackZone();
-  gfx->flush();
+  loggedFlush();
 }
 
 // =========================================================================
@@ -161,11 +226,11 @@ struct CalibTarget {
 };
 
 static const CalibTarget CALIB_TARGETS[5] = {
-  {"TL", 20, 20},
-  {"TR", SCREEN_W - 20, 20},
-  {"BL", 20, SCREEN_H - 20},
-  {"BR", SCREEN_W - 20, SCREEN_H - 20},
-  {"C", SCREEN_W / 2, SCREEN_H / 2},
+  {"TL", CALIB_TL_X, CALIB_TL_Y},
+  {"TR", CALIB_TR_X, CALIB_TR_Y},
+  {"BL", CALIB_BL_X, CALIB_BL_Y},
+  {"BR", CALIB_BR_X, CALIB_BR_Y},
+  {"C", CALIB_C_X, CALIB_C_Y},
 };
 
 struct CalibResult {
@@ -182,7 +247,7 @@ static void drawTouchCalibrationScreen() {
 
   for (uint8_t i = 0; i < 5; i++) {
     uint16_t color = _calibResults[i].captured ? COLOR_SUCCESS : COLOR_PRIMARY;
-    gfx->fillCircle(CALIB_TARGETS[i].x, CALIB_TARGETS[i].y, 18, color);
+    gfx->fillCircle(CALIB_TARGETS[i].x, CALIB_TARGETS[i].y, CALIB_TARGET_RADIUS, color);
     drawCenteredText(CALIB_TARGETS[i].label, CALIB_TARGETS[i].x, CALIB_TARGETS[i].y, 1, COLOR_TEXT_LIGHT);
   }
 
@@ -199,7 +264,7 @@ static void drawTouchCalibrationScreen() {
   }
 
   drawBackZone();
-  gfx->flush();
+  loggedFlush();
 }
 
 static void handleTouchCalibrationTouch(const TouchPoint &tp) {
@@ -238,7 +303,7 @@ static void drawButtonHitTest() {
   }
 
   drawBackZone();
-  gfx->flush();
+  loggedFlush();
 }
 
 static void handleButtonHitTestTouch(const TouchPoint &tp) {
@@ -293,7 +358,7 @@ static void drawFlushTimingResults() {
   drawCenteredText(buf, SCREEN_W / 2, 230, 2, COLOR_PRIMARY);
 
   drawBackZone();
-  gfx->flush();
+  loggedFlush();
 }
 
 // =========================================================================
@@ -309,7 +374,7 @@ static void drawDoubleTapTest() {
   drawCenteredText("Tap anywhere below", SCREEN_W / 2, 140, 2, COLOR_TEXT_DARK);
   drawCenteredText(_dtLastResult, SCREEN_W / 2, 220, 4, COLOR_PRIMARY);
   drawBackZone();
-  gfx->flush();
+  loggedFlush();
 }
 
 static void handleDoubleTapTouch(const TouchPoint &tp) {
@@ -357,7 +422,7 @@ static void drawQrRenderTest() {
   }
 
   drawBackZone();
-  gfx->flush();
+  loggedFlush();
 }
 
 // =========================================================================

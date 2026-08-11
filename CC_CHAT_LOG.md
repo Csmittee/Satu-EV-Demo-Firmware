@@ -1,6 +1,37 @@
 # CC_CHAT_LOG.md
-> Version 1.3 — 2026-08-08
+> Version 1.4 — 2026-08-11
 
+---
+## [2026-08-11] — CC_PROMPT_fix_back_collision_and_instrument_v1 (from docs/prompts/inbox/)
+**Did:** Bug 1 (confirmed, owner-reproduced): repositioned selftest's
+`<Back>` zone from top-left to top-center, provably clear of all 5 Test
+2 targets via `static_assert` — not eyeballed. Notable wrinkle: re-
+reading the OLD code, the old Back rect and TR's target circle had a
+~212px gap in pixel space — no actual overlap found. Flagged this
+openly rather than silently implementing the requested fix as if the
+prompt's framing were verified fact — see LIBRARY_axs15231b.md "Open
+question." Implemented the reposition anyway since it's a safe fix
+regardless of the true mechanism. Section 3 (unresolved slowness/Test 3)
+NOT guess-fixed — added always-on instrumentation instead (differentiated
+I2C failure logging + counter, per-touch raw x/y logging, flush()
+duration via new loggedFlush() wrapper at all call sites except Test 4's
+own loop, loop()-over-100ms logging) in both display.h copies,
+ui_screens.h, qr.h, selftest/tests.h, both .ino files.
+**Updated:** RULES.md (R-10, R-11), LIBRARY_axs15231b.md ("Open
+question" section), PROJECT_STATE.md.
+**New files:** none.
+**Pending Chat verify:** owner must re-run Test 2 (all 5 targets
+including TR) and Test 3, and if slowness recurs, send the Serial log
+this time — format in RULES.md R-11. If Test 2's raw values are still
+far from expected in a consistent pattern (e.g. axes swapped/inverted),
+that's the coordinate-mapping question in LIBRARY_axs15231b.md, next.
+**Flags:** OVERRIDE-adjacent — did not silently accept the prompt's Bug
+1 framing ("straightforward layout collision") without checking; found
+no pixel-space overlap in the code that produced the report, documented
+the discrepancy, and implemented the requested fix anyway since it's
+correct regardless of mechanism. No RULES.md rule removed. R-9 (reset
+timing, PR #3) explicitly left untouched per the prompt's DO NOT TOUCH
+list — no evidence yet points at it.
 ---
 ## [2026-08-08] — CC_PROMPT_fix_touch_garbage_read_v1 (from docs/prompts/inbox/)
 **Did:** Root cause confirmed for the garbage `4095,4095` touch reads

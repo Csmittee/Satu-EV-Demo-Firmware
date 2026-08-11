@@ -30,6 +30,20 @@ struct TouchPoint {
   int16_t y;
 };
 
+// gfx->flush() is a blocking call to the physical panel — every call
+// site should go through this wrapper instead of calling gfx->flush()
+// directly, so slow frames show up in the log instead of just "feeling
+// slow." Always-on, cheap, left in permanently — see RULES.md R-11.
+// Exception: Test 4 (flush timing) in selftest/tests.h measures its own
+// dedicated 20-run loop and intentionally calls gfx->flush() directly
+// to avoid double-logging the same numbers it already reports.
+static void loggedFlush() {
+  uint32_t start = millis();
+  gfx->flush();
+  uint32_t dur = millis() - start;
+  Serial.printf("[%lu] FLUSH dur=%lums\n", (unsigned long)start, (unsigned long)dur);
+}
+
 static bool displayInit() {
   pinMode(GFX_BL, OUTPUT);
   digitalWrite(GFX_BL, LOW);  // stay dark until first frame is flushed
@@ -38,7 +52,7 @@ static bool displayInit() {
     return false;
   }
   gfx->fillScreen(COLOR_BG);
-  gfx->flush();
+  loggedFlush();
   digitalWrite(GFX_BL, HIGH);
 
   Wire.begin(TOUCH_SDA, TOUCH_SCL);
@@ -65,6 +79,11 @@ static void setBacklight(bool on) {
   digitalWrite(GFX_BL, on ? HIGH : LOW);
 }
 
+// Always-on diagnostics — cheap, left in permanently, not just for one
+// debug session. See RULES.md R-11 and docs/prompts/archive/
+// CC_PROMPT_fix_back_collision_and_instrument_v1.md Section 3.
+static uint32_t _i2cFailCount = 0;
+
 // Raw AXS15231B touch read over I2C — no dedicated Arduino touch library
 // exists for this chip (see LIBRARY_axs15231b.md). Single-touch only:
 // the AXS15231B silicon supports real multi-touch per its datasheet, but
@@ -76,11 +95,23 @@ static TouchPoint readTouch() {
 
   Wire.beginTransmission(TOUCH_I2C_ADDR);
   Wire.write(cmd, sizeof(cmd));
-  if (Wire.endTransmission() != 0) {
+  uint8_t endResult = Wire.endTransmission();
+  if (endResult != 0) {
+    _i2cFailCount++;
+    Serial.printf("[%lu] TOUCH fail i2c_end_transmission err=%u\n", millis(), endResult);
+    if (_i2cFailCount % 50 == 0) {
+      Serial.printf("[%lu] TOUCH fail_count=%lu\n", millis(), (unsigned long)_i2cFailCount);
+    }
     return result;
   }
 
-  if (Wire.requestFrom((int)TOUCH_I2C_ADDR, 8) != 8) {
+  uint8_t gotBytes = Wire.requestFrom((int)TOUCH_I2C_ADDR, 8);
+  if (gotBytes != 8) {
+    _i2cFailCount++;
+    Serial.printf("[%lu] TOUCH fail i2c_request_from got=%u\n", millis(), gotBytes);
+    if (_i2cFailCount % 50 == 0) {
+      Serial.printf("[%lu] TOUCH fail_count=%lu\n", millis(), (unsigned long)_i2cFailCount);
+    }
     return result;
   }
 
@@ -97,5 +128,8 @@ static TouchPoint readTouch() {
   result.touched = true;
   result.x = ((data[2] & 0x0F) << 8) | data[3];
   result.y = ((data[4] & 0x0F) << 8) | data[5];
+
+  Serial.printf("[%lu] TOUCH ok touched=1 x=%d y=%d\n", millis(), result.x, result.y);
+
   return result;
 }

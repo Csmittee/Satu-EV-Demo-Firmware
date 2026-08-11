@@ -56,5 +56,5 @@ static void drawQRScreen(uint16_t amountBaht) {
     }
   }
 
-  gfx->flush();
+  loggedFlush();
 }

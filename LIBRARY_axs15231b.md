@@ -1,5 +1,5 @@
 # LIBRARY_axs15231b.md
-> Version 1.1 — 2026-08-08
+> Version 1.2 — 2026-08-11
 > Library: GFX Library for Arduino (moononournation/Arduino_GFX)
 > Covers: display bus, AXS15231B driver, Arduino_Canvas framebuffer, touch read
 
@@ -158,12 +158,55 @@ reverse-engineered guess that may return valid-looking-but-wrong data
 independent of reset timing (see Section 3.2 candidate 2 in
 `docs/prompts/archive/CC_PROMPT_fix_touch_garbage_read_v1.md`).
 
+### Open question — raw touch coordinates vs. screen-pixel space (2026-08-11)
+
+Every hit-test in this codebase (`isBackZoneTap()`, `menuRowRect()`
+checks, `CONFIRM_BTN_*` checks in both `ui_screens.h` and
+`selftest/tests.h`) compares `readTouch()`'s raw `x,y` directly against
+rects defined in screen-pixel coordinates (0-319, 0-479), with no
+calibration/scaling step in between. This has never been verified.
+
+**Why this is now suspect:** the owner reported tapping the Test 2 TR
+target being consumed as the self-test's `<Back>` zone. Re-reading the
+code that produced that report: the old Back rect (0,0)-(70,40) and the
+TR target's circle (center 300,20, radius 18, bounding box 282-318 ×
+2-38) do not overlap in screen-pixel space — there's a ~212px gap. Two
+explanations are possible: either this analysis is wrong, or the raw
+value `readTouch()` returns for a physical tap at screen-pixel (300,20)
+is genuinely *not* close to (300,20) — i.e. the touch controller's
+coordinate space isn't 1:1 with the panel's rendered pixel space (could
+be axis swap, inversion, or a different native range needing a scale
+step — AXS15231B-based boards are known to sometimes need a rotation-
+dependent touch transform; see community reports of "no hardware
+rotation" and wrong-axis issues for this exact chip/board family in the
+research this file's original version cites).
+
+**Not resolved, deliberately** — this needs real coordinate data, not
+another guess (see RULES.md R-10's origin story for why "obviously no
+overlap" isn't good enough). The 2026-08-08 Test 2 capture (the one
+that found the `4095,4095` garbage-read bug) predates the reset-timing
+fix, so its raw values aren't trustworthy evidence for this separate
+question. The `<Back>` zone has been repositioned top-center, provably
+clear of all 5 calibration targets via `static_assert` (R-10), which
+removes it as a variable regardless of which explanation is correct.
+**Next diagnostic step, if Test 2/3 still misbehave after the Back
+reposition:** have the owner run Test 2 again post-fix and check
+whether each target's raw `x,y` is anywhere close to its `expect(x,y)`
+— if corners are consistently and predictably "wrong" (e.g. X and Y
+swapped, or one axis inverted), that's the coordinate-mapping bug,
+fixable with a single transform in `readTouch()`. Do not add that
+transform speculatively before seeing the pattern in real data.
+
 ## Known issues summary (for future sessions)
 
 - Touch reset sequence needed 200ms/200ms, not 20ms/20ms/50ms — fixed
   2026-08-08, see "Touch reset timing" above. If garbage `4095,4095`
   reads ever reappear, this is the first place to re-check, not the
   second.
+- Open question (2026-08-11, unresolved): raw touch `x,y` may not be
+  1:1 with screen-pixel space — see "Open question" above. Every
+  hit-test in the codebase assumes it is; that assumption has never
+  been verified against real coordinate data.
 - v1.6.1+: AXS15231B QSPI init regression on this board (#803) — reason
   we're pinned to v1.6.0, see above
 - Multiple older issues (#766, #713, #593, #513) on this same

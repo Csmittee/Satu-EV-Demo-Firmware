@@ -1,5 +1,45 @@
 # PROJECT_STATE.md
-> Version 1.3 — 2026-08-08
+> Version 1.4 — 2026-08-11
+
+---
+
+## [2026-08-11] — Bug 1 fixed and confirmed by code check; timing/degradation still open, instrumented, awaiting next physical run's log
+
+**Bug 1 — CONFIRMED FIXED (by code check, not yet by physical re-test):**
+the self-test's `<Back>` zone repositioned from top-left (0,0,70,40) to
+top-center, provably clear of all 5 Test 2 calibration targets via
+compile-time `static_assert` (RULES.md R-10) — not eyeballed. Owner had
+reproduced tapping the TR target being consumed as "exit test."
+
+**Notable wrinkle, documented for the next session:** re-reading the
+*old* code, the reported collision doesn't line up with a pixel-space
+overlap — old Back rect and TR's target circle had a ~212px gap between
+them. Either that analysis is wrong, or the touch controller's raw
+coordinate space isn't 1:1 with screen-pixel space the way every
+hit-test in this codebase assumes. Not resolved — see
+`LIBRARY_axs15231b.md` ("Open question — raw touch coordinates vs.
+screen-pixel space"). The reposition fixes Back regardless of which
+explanation is right, but if TR still can't be calibrated after this,
+that open question is the next thing to check, with real data.
+
+**UNRESOLVED, instrumented rather than guessed at:** "Self-test responds
+fast at first, becomes unresponsive after running a while," Test 3
+(isolated Confirm-button geometry) still not responding, and general
+slowness ("have to hit Back and it takes so long"). Added always-on
+Serial instrumentation (RULES.md R-11) instead of another speculative
+fix: differentiated I2C touch failure logging (with a running counter
+throttled to every 50th), every real touch logged with raw x,y, every
+`flush()` call's duration via a new `loggedFlush()` wrapper (swapped in
+at all call sites in `ui_screens.h`, `qr.h`, and `selftest/tests.h`
+except Test 4's own dedicated measurement loop), and any `loop()`
+iteration over 100ms logged. Did **not** touch the PR #3 reset-timing
+values (200ms/200ms) — no evidence yet that they're insufficient, only
+that something else is still wrong.
+
+**Owner must:** re-run the full Test 2 sequence (all 5 targets,
+including TR, with Back out of the way), Test 3, and if slowness
+recurs, send back the Serial log this time — not a description. The log
+format is documented in RULES.md R-11.
 
 ---
 
